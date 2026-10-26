@@ -1,0 +1,13 @@
+{
+    "name": "hello-world",
+    "version": "1.0.0",
+    "type": "stdio",
+    "mcpServer": {
+        "name": "hello-world",
+        "title": "Hello World",
+        "version": "1.0.0",
+        "description": "A simple hello world plugin",
+        "websiteUrl": "https://example.com",
+        "icons": []
+    }
+}
