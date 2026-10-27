@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -78,7 +79,7 @@ func StartLayerkitServe(path string) {
 	for _, flow := range flows {
 		r.mcpServer.AddTool(&mcp.Tool{
 			Name:        flow.Name,
-			Description: flow.Name,
+			Description: toolDescription(flow),
 			InputSchema: inputSchema(flow),
 		}, r.handler(flow.Name, outputNames(flow.Layers)))
 		fmt.Fprintf(os.Stderr, "registered tool %q\n", flow.Name)
@@ -139,22 +140,49 @@ func loadSpec(cwd, specPath string, idx *index.Index) (layerengine.Flow, []layer
 	return flow, layers, nil
 }
 
-// inputSchema builds the JSON schema for a flow's input.
-// Per-input types aren't in the spec yet, so every input is a string.
-// This is the only place that depends on the shape of flow.Input — adjust
-// here when typed inputs land.
-func inputSchema(flow layerengine.Flow) map[string]any {
-	props := map[string]any{}
-	required := []string{}
-	for _, fi := range flow.Input {
-		props[fi.Name] = map[string]any{"type": "string"}
-		required = append(required, fi.Name)
+// toolDescription is what an MCP client shows the model when it chooses a
+// tool, so it uses the spec's own description. The name is only a fallback
+// for specs that omit one, since the validator does not require it.
+func toolDescription(flow layerengine.Flow) string {
+	if d := strings.TrimSpace(flow.Description); d != "" {
+		return d
 	}
-	return map[string]any{
+	return flow.Name
+}
+
+// inputSchema builds the JSON schema for a flow's input from the spec's own
+// per-input type, description and optional flag. Types are passed through as
+// written — the validator does not constrain them to a fixed set, so any JSON
+// Schema type an author writes is honoured, and a missing type falls back to
+// "string". Inputs marked `optional: true` are left out of `required` so an
+// MCP client may omit them; RunFlow enforces the same rule at runtime.
+func inputSchema(flow layerengine.Flow) map[string]any {
+	props := make(map[string]any, len(flow.Input))
+	var required []string
+	for _, fi := range flow.Input {
+		t := strings.TrimSpace(fi.Type)
+		if t == "" {
+			t = "string"
+		}
+		prop := map[string]any{"type": t}
+		if d := strings.TrimSpace(fi.Description); d != "" {
+			prop["description"] = d
+		}
+		props[fi.Name] = prop
+		if !fi.Optional {
+			required = append(required, fi.Name)
+		}
+	}
+	schema := map[string]any{
 		"type":       "object",
 		"properties": props,
-		"required":   required,
 	}
+	// Omit `required` entirely when nothing is mandatory: an empty array is
+	// valid JSON Schema but reads as noise in a client's tool list.
+	if len(required) > 0 {
+		schema["required"] = required
+	}
+	return schema
 }
 
 func outputNames(layers []layerengine.Layer) []string {
