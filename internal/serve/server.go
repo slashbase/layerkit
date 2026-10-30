@@ -25,9 +25,10 @@ type server struct {
 	mcpServer *mcp.Server
 }
 
-// NewServer creates a new server instance with a fresh LayerEngine and MCP server.
-func NewServer() *server {
-	s := settings.ReadSettingsFromFile()
+// NewServer creates a new server instance with a fresh LayerEngine and MCP
+// server, reading settings.json from settingsDir.
+func NewServer(currentDir string) *server {
+	s := settings.ReadSettingsFromFile(currentDir)
 	return &server{
 		engine:    layerengine.NewLayerEngine(nil),
 		settings:  s,

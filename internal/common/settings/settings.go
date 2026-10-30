@@ -3,6 +3,7 @@ package settings
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -24,8 +25,11 @@ func DefaultSettings() Settings {
 	}
 }
 
-func ReadSettingsFromFile() Settings {
-	file, err := os.Open(settingsFilePath)
+// ReadSettingsFromFile reads settings.json from dir, so a server started with
+// --path reads the settings belonging to the layers it serves rather than the
+// ones in whatever directory it happened to be started from.
+func ReadSettingsFromFile(dir string) Settings {
+	file, err := os.Open(filepath.Join(dir, settingsFilePath))
 	if err != nil {
 		return DefaultSettings()
 	}

@@ -1,7 +1,6 @@
 package run
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -41,7 +40,16 @@ func StartLayerkitRun(specFileName string, input map[string]any) {
 	var flow layerengine.Flow
 	layerengine.MapToStruct(validator.StructToMap(f), &flow)
 
-	refs, err := buildLayersFor(cwd, flow.Name)
+	var idx index.Index
+	if err := idx.Load(cwd); err != nil {
+		fmt.Println("error loading index:", err)
+		os.Exit(1)
+	}
+	if builtHash, ok := idx.HashFor(flow.Name); ok && index.HashContent(specData) != builtHash {
+		fmt.Fprintf(os.Stderr, "warning: %s changed since the last build; run `layerkit build`\n", specFileName)
+	}
+
+	refs, err := idx.LayersFor(flow.Name)
 	if err != nil {
 		fmt.Println("error finding build for tool:", err)
 		fmt.Println("hint: run `layerkit build` first")
@@ -96,25 +104,4 @@ func StartLayerkitRun(specFileName string, input map[string]any) {
 	}
 
 	fmt.Printf("%v\n", result)
-}
-
-// buildLayersFor returns the layer artifacts recorded for toolName.
-func buildLayersFor(cwd, toolName string) ([]index.LayerRef, error) {
-	path := filepath.Join(cwd, index.StateDir, index.IndexFile)
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("reading %s: %w", index.IndexFile, err)
-	}
-
-	var idx index.Index
-	if err := json.Unmarshal(data, &idx); err != nil {
-		return nil, fmt.Errorf("parsing %s: %w", index.IndexFile, err)
-	}
-
-	for _, entry := range idx.Tools {
-		if entry.Name == toolName {
-			return entry.Layers, nil
-		}
-	}
-	return nil, fmt.Errorf("no build found for tool %q", toolName)
 }

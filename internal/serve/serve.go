@@ -70,7 +70,7 @@ func StartLayerkitServe(path string) {
 		allLayers = append(allLayers, layers...)
 	}
 
-	r := NewServer()
+	r := NewServer(path)
 
 	// A failed load leaves the engine without those layers or flows, and the
 	// tool would still be registered below — failing at call time, in front of
@@ -114,6 +114,16 @@ func loadSpec(cwd, specPath string, idx *index.Index) (layerengine.Flow, []layer
 	}
 
 	layerengine.MapToStruct(validator.StructToMap(f), &flow)
+
+	// A spec edited since it was built still loads its old artifacts: the layer
+	// hash covers a layer's fields and its resolved contract, but a spec can
+	// change in ways that leave every layer hash alone. Say so rather than
+	// serve yesterday's Lua quietly.
+	if builtHash, ok := idx.HashFor(flow.Name); ok {
+		if index.HashContent(specData) != builtHash {
+			fmt.Fprintf(os.Stderr, "warning: %s changed since the last build; run `layerkit build`\n", filepath.Base(specPath))
+		}
+	}
 
 	refs, err := idx.LayersFor(flow.Name)
 	if err != nil {

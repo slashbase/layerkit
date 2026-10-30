@@ -1,6 +1,8 @@
 package index
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -87,4 +89,23 @@ func (idx *Index) LayersFor(toolName string) ([]LayerRef, error) {
 		}
 	}
 	return nil, fmt.Errorf("no build found for tool %q", toolName)
+}
+
+// HashContent is the content hash of a spec file's bytes. build records it in
+// the index; serve and run compare against it to detect a spec that has been
+// edited since it was last built.
+func HashContent(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
+}
+
+// HashFor returns the spec hash recorded for toolName, and whether the tool has
+// been built at all.
+func (idx *Index) HashFor(toolName string) (string, bool) {
+	for _, entry := range idx.Tools {
+		if entry.Name == toolName {
+			return entry.Hash, true
+		}
+	}
+	return "", false
 }

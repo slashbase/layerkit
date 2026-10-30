@@ -1,8 +1,6 @@
 package build
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -37,21 +35,32 @@ func StartLayerkitBuild() {
 		return
 	}
 
+	// The provider is chosen by which key is present, and the model has to match
+	// it: passing an OpenAI key with a Claude model builds an Anthropic client
+	// that authenticates with the wrong credential and fails at generate time.
 	openAIAPIKey := config.GetEnv().OPENAI_API_KEY
 	anthropicAPIKey := config.GetEnv().ANTHROPIC_API_KEY
-	if openAIAPIKey == "" && anthropicAPIKey == "" {
+
+	var (
+		apiKey   string
+		model    codegen.ModelID
+		provider string
+	)
+	switch {
+	case openAIAPIKey != "" && anthropicAPIKey != "":
+		fmt.Println("error: both OPENAI_API_KEY and ANTHROPIC_API_KEY are set")
+		fmt.Println("unset one: the model is chosen by which provider has a key, so the two cannot be mixed")
+		os.Exit(1)
+	case openAIAPIKey != "":
+		apiKey, model, provider = openAIAPIKey, codegen.GPT6Luna, "openai"
+	case anthropicAPIKey != "":
+		apiKey, model, provider = anthropicAPIKey, codegen.ClaudeSonnet5_5, "anthropic"
+	default:
 		fmt.Println("error: OPENAI_API_KEY or ANTHROPIC_API_KEY is required")
 		os.Exit(1)
 	}
-	apiKey := openAIAPIKey
-	if apiKey == "" {
-		apiKey = anthropicAPIKey
-	}
 
-	model := codegen.GPT6Luna
-	if anthropicAPIKey != "" {
-		model = codegen.ClaudeSonnet5_5
-	}
+	fmt.Printf("generating with %s (%s)\n", model, provider)
 
 	codegenerater, err := codegen.NewCodeGen(apiKey, model)
 	if err != nil {
@@ -100,7 +109,7 @@ func buildSpec(cwd, specPath string, idx *index.Index, engine *layerengine.Layer
 	layerengine.MapToStruct(validator.StructToMap(f), &flow)
 
 	toolName := flow.Name
-	specHash := hashContent(specData)
+	specHash := index.HashContent(specData)
 
 	refs := make([]index.LayerRef, 0, len(flow.Layers))
 	flowInputMap := map[string]layerengine.FlowInput{}
@@ -116,8 +125,6 @@ func buildSpec(cwd, specPath string, idx *index.Index, engine *layerengine.Layer
 		}
 		refs = append(refs, ref)
 	}
-
-	_ = engine // reserved for a future dry-run / validation pass via engine.LoadSpec
 
 	fmt.Printf("  %s (%s) built\n", toolName, shortHash(specHash))
 	idx.UpsertToolEntry(toolName, specHash, refs)
@@ -180,11 +187,6 @@ func buildLayer(cwd string, layer layerengine.Layer, codegenerater *codegen.Code
 	return index.LayerRef{Name: layer.Name, Hash: hash, Path: relPath}, nil
 }
 
-func hashContent(data []byte) string {
-	sum := sha256.Sum256(data)
-	return hex.EncodeToString(sum[:])
-}
-
 // hashLayer hashes everything the prompt is built from: the layer's own
 // fields, the resolved input and output contract, and the model that writes the code. Two
 // layers with an identical prompt — even from different tools — share one
@@ -210,7 +212,7 @@ func hashLayer(layer layerengine.Layer, inputs []codegen.Input, outputs []codege
 	}
 	field("model", model)
 
-	return hashContent([]byte(b.String()))
+	return index.HashContent([]byte(b.String()))
 }
 
 func shortHash(h string) string {
