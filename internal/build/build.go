@@ -186,8 +186,7 @@ func hashContent(data []byte) string {
 }
 
 // hashLayer hashes everything the prompt is built from: the layer's own
-// fields, the resolved input and output contract, the module set whose Usage
-// strings are quoted in the prompt, and the model that writes the code. Two
+// fields, the resolved input and output contract, and the model that writes the code. Two
 // layers with an identical prompt — even from different tools — share one
 // artifact, and any edit that would change the generated Lua produces a new
 // one instead of silently reusing the old file.
