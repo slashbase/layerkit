@@ -26,14 +26,18 @@ type server struct {
 }
 
 // NewServer creates a new server instance with a fresh LayerEngine and MCP
-// server, reading settings.json from settingsDir.
-func NewServer(currentDir string) *server {
-	s := settings.ReadSettingsFromFile(currentDir)
+// server, reading settings.json from settingsDir. An unparseable settings file
+// is returned as an error rather than papered over with defaults.
+func NewServer(layerkitDirPath string) (*server, error) {
+	s, err := settings.ReadSettingsFromFile(layerkitDirPath)
+	if err != nil {
+		return nil, err
+	}
 	return &server{
 		engine:    layerengine.NewLayerEngine(nil),
 		settings:  s,
 		mcpServer: mcp.NewServer(&s.McpServer, nil),
-	}
+	}, nil
 }
 
 // RunServer runs the server, serving over the configured transport (stdio or http).

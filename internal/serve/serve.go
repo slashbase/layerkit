@@ -70,7 +70,10 @@ func StartLayerkitServe(path string) {
 		allLayers = append(allLayers, layers...)
 	}
 
-	r := NewServer(path)
+	r, err := NewServer(path)
+	if err != nil {
+		fatalf("%v", err)
+	}
 
 	// A failed load leaves the engine without those layers or flows, and the
 	// tool would still be registered below — failing at call time, in front of
