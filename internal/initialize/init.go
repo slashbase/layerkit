@@ -7,17 +7,8 @@ import (
 	"path/filepath"
 )
 
-//go:embed templates/hello.tool.yaml
-var helloSpecTemplate embed.FS
-
-//go:embed templates/settings.json
-var settingsJsonTemplate embed.FS
-
-//go:embed templates/README.md
-var readmeTemplate embed.FS
-
-//go:embed templates/gitignore
-var gitignoreTemplate embed.FS
+//go:embed templates
+var templates embed.FS
 
 const (
 	helloSpecFilename    = "hello.tool.yaml"
@@ -26,7 +17,18 @@ const (
 	settingsJsonFilename = "settings.json"
 )
 
+// scaffold is one embedded template and the file it becomes in the target
+// directory.
+type scaffold struct {
+	src  string // path inside the embedded templates directory
+	name string // file name written into the target directory
+}
+
 // StartLayerkitInit scaffolds a new tool-spec repo in the current directory.
+//
+// A file that already exists is left alone and reported rather than replaced:
+// init writes ordinary project files, and a README.md or .gitignore may already
+// hold the user's own content.
 func StartLayerkitInit() {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -40,31 +42,44 @@ func StartLayerkitInit() {
 		os.Exit(1)
 	}
 
-	if err := writeEmbeddedFile(helloSpecTemplate, "templates/hello.tool.yaml", filepath.Join(cwd, helloSpecFilename)); err != nil {
-		fmt.Println("error writing", helloSpecFilename+":", err)
-		os.Exit(1)
+	scaffolds := []scaffold{
+		{src: "templates/hello.tool.yaml", name: helloSpecFilename},
+		{src: "templates/settings.json", name: settingsJsonFilename},
+		{src: "templates/README.md", name: readmeFilename},
+		{src: "templates/gitignore", name: gitignoreFilename},
 	}
 
-	if err := writeEmbeddedFile(settingsJsonTemplate, "templates/settings.json", filepath.Join(cwd, settingsJsonFilename)); err != nil {
-		fmt.Println("error writing", settingsJsonFilename+":", err)
-		os.Exit(1)
+	var created, skipped []string
+	for _, s := range scaffolds {
+		dst := filepath.Join(cwd, s.name)
+
+		if _, err := os.Stat(dst); err == nil {
+			skipped = append(skipped, s.name)
+			continue
+		} else if !os.IsNotExist(err) {
+			fmt.Println("error checking "+s.name+":", err)
+			os.Exit(1)
+		}
+
+		if err := writeEmbeddedFile(s.src, dst); err != nil {
+			fmt.Println("error writing "+s.name+":", err)
+			os.Exit(1)
+		}
+		created = append(created, s.name)
 	}
 
-	if err := writeEmbeddedFile(readmeTemplate, "templates/README.md", filepath.Join(cwd, readmeFilename)); err != nil {
-		fmt.Println("error writing", readmeFilename+":", err)
-		os.Exit(1)
+	if len(created) > 0 {
+		fmt.Println("initialized layerkit repo:")
+		for _, name := range created {
+			fmt.Println("  " + name)
+		}
 	}
-
-	if err := writeEmbeddedFile(gitignoreTemplate, "templates/gitignore", filepath.Join(cwd, gitignoreFilename)); err != nil {
-		fmt.Println("error writing", gitignoreFilename+":", err)
-		os.Exit(1)
+	if len(skipped) > 0 {
+		fmt.Println("left existing files untouched:")
+		for _, name := range skipped {
+			fmt.Println("  " + name)
+		}
 	}
-
-	fmt.Println("initialized layerkit repo:")
-	fmt.Println("  " + helloSpecFilename)
-	fmt.Println("  " + readmeFilename)
-	fmt.Println("  " + gitignoreFilename)
-	fmt.Println("  " + settingsJsonFilename)
 	fmt.Println()
 	fmt.Println("next: layerkit build && layerkit serve")
 }
@@ -79,8 +94,8 @@ func alreadyInitialized(cwd string) bool {
 }
 
 // writeEmbeddedFile copies an embedded template file to dst.
-func writeEmbeddedFile(fsys embed.FS, src, dst string) error {
-	data, err := fsys.ReadFile(src)
+func writeEmbeddedFile(src, dst string) error {
+	data, err := templates.ReadFile(src)
 	if err != nil {
 		return err
 	}
