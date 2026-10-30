@@ -80,8 +80,14 @@ func StartLayerkitRun(specFileName string, input map[string]any) {
 		layerNames = append(layerNames, layer.Name)
 	}
 
-	engine.LoadLayers(layers)
-	engine.LoadFlow(flow)
+	if err := engine.LoadLayers(layers); err != nil {
+		fmt.Println("error loading layers:", err)
+		os.Exit(1)
+	}
+	if err := engine.LoadFlow(flow); err != nil {
+		fmt.Println("error loading flow:", err)
+		os.Exit(1)
+	}
 
 	result, err := engine.RunFlowWithOptions(flow.Name, input, config.LayerEngineCoerceOptions())
 	if err != nil {

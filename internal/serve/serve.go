@@ -71,9 +71,18 @@ func StartLayerkitServe(path string) {
 	}
 
 	r := NewServer()
-	r.engine.LoadLayers(allLayers)
+
+	// A failed load leaves the engine without those layers or flows, and the
+	// tool would still be registered below — failing at call time, in front of
+	// an MCP client, with a message that points at the flow rather than at the
+	// layer that never compiled. Refuse to start instead.
+	if err := r.engine.LoadLayers(allLayers); err != nil {
+		fatalf("loading layers: %v", err)
+	}
 	for _, flow := range flows {
-		r.engine.LoadFlow(flow)
+		if err := r.engine.LoadFlow(flow); err != nil {
+			fatalf("loading flow: %v", err)
+		}
 	}
 
 	for _, flow := range flows {
