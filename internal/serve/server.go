@@ -7,6 +7,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/slashbase/layerengine"
+	"github.com/slashbase/layerkit/internal/common/config"
 	"github.com/slashbase/layerkit/internal/common/settings"
 )
 
@@ -58,7 +59,7 @@ func (r *server) handler(flowName string, outputNames []string) mcp.ToolHandler 
 			}
 		}
 
-		result, err := r.engine.RunFlow(flowName, args)
+		result, err := r.engine.RunFlowWithOptions(flowName, args, config.LayerEngineCoerceOptions())
 		if err != nil {
 			// Flow failures are tool-level errors, not protocol errors.
 			return toolError(err.Error()), nil

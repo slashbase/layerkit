@@ -8,6 +8,7 @@ import (
 
 	"github.com/slashbase/layerengine"
 	"github.com/slashbase/layerengine/validator"
+	"github.com/slashbase/layerkit/internal/common/config"
 	"github.com/slashbase/layerkit/internal/common/index"
 )
 
@@ -82,7 +83,7 @@ func StartLayerkitRun(specFileName string, input map[string]any) {
 	engine.LoadLayers(layers)
 	engine.LoadFlow(flow)
 
-	result, err := engine.RunFlow(flow.Name, input)
+	result, err := engine.RunFlowWithOptions(flow.Name, input, config.LayerEngineCoerceOptions())
 	if err != nil {
 		fmt.Println("error running flow:", err)
 		os.Exit(1)

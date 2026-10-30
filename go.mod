@@ -3,7 +3,7 @@ module github.com/slashbase/layerkit
 go 1.26.0
 
 require (
-	github.com/slashbase/layerengine v0.2.0
+	github.com/slashbase/layerengine v0.2.1
 	github.com/spf13/cobra v1.10.2
 )
 
