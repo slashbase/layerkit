@@ -1,6 +1,6 @@
 # Layerkit
 
-Simple spec-first LLM driven execution engine that turns YAML tool specs into MCP servers. Built on layerengine.
+Simple spec-first LLM driven execution engine that turns YAML tool specs into MCP servers. Built on [layerengine](https://github.com/slashbase/layerengine).
 
 ## 🚧 WIP experimental project.
 
