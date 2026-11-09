@@ -35,34 +35,7 @@ func StartLayerkitBuild() {
 		return
 	}
 
-	// The provider is chosen by which key is present, and the model has to match
-	// it: passing an OpenAI key with a Claude model builds an Anthropic client
-	// that authenticates with the wrong credential and fails at generate time.
-	openAIAPIKey := config.GetEnv().OPENAI_API_KEY
-	anthropicAPIKey := config.GetEnv().ANTHROPIC_API_KEY
-
-	var (
-		apiKey   string
-		model    codegen.ModelID
-		provider string
-	)
-	switch {
-	case openAIAPIKey != "" && anthropicAPIKey != "":
-		fmt.Println("error: both OPENAI_API_KEY and ANTHROPIC_API_KEY are set")
-		fmt.Println("unset one: the model is chosen by which provider has a key, so the two cannot be mixed")
-		os.Exit(1)
-	case openAIAPIKey != "":
-		apiKey, model, provider = openAIAPIKey, codegen.GPT6Luna, "openai"
-	case anthropicAPIKey != "":
-		apiKey, model, provider = anthropicAPIKey, codegen.ClaudeSonnet5_5, "anthropic"
-	default:
-		fmt.Println("error: OPENAI_API_KEY or ANTHROPIC_API_KEY is required")
-		os.Exit(1)
-	}
-
-	fmt.Printf("generating with %s (%s)\n", model, provider)
-
-	codegenerater, err := codegen.NewCodeGen(apiKey, model)
+	codegenerater, model, err := config.CodeGenFromEnv()
 	if err != nil {
 		fmt.Println("error creating codegen client:", err)
 		os.Exit(1)

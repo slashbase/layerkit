@@ -5,6 +5,8 @@ import (
 	"os"
 
 	"github.com/slashbase/layerengine"
+	"github.com/slashbase/layerengine/codegen"
+	leconfig "github.com/slashbase/layerengine/config"
 )
 
 // Options is the policy layerkit runs flows with: values are converted to the
@@ -20,4 +22,19 @@ func LayerEngineCoerceOptions() layerengine.CoerceOptions {
 			fmt.Fprintf(os.Stderr, "warning: dropping undeclared argument %q\n", name)
 		},
 	}
+}
+
+func CodeGenFromEnv() (*codegen.CodeGen, codegen.ModelID, error) {
+
+	cfg, err := leconfig.FromEnv()
+	if err != nil {
+		return nil, "", err
+	}
+
+	codegenerater, err := cfg.CodeGen()
+	if err != nil {
+		return nil, "", err
+	}
+
+	return codegenerater, cfg.Model, nil
 }

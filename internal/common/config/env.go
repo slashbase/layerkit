@@ -7,9 +7,7 @@ import (
 )
 
 type envConfig struct {
-	PORT              string `key:"PORT"`
-	OPENAI_API_KEY    string `key:"OPENAI_API_KEY"`
-	ANTHROPIC_API_KEY string `key:"ANTHROPIC_API_KEY"`
+	PORT string `key:"PORT"`
 }
 
 var env envConfig
